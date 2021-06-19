@@ -25,3 +25,9 @@
 > 3. When I recreate the picture, should i use an vector to get the value (computing i once) Or should I count at each pixel? (The former sounds better)
 
 > 4. Save the pic.
+
+## Pushes
+
+### 2021/06/19: Re-init
+
+> This repository got initialized at the wrong place, with the wrong git ignore. This was resolved by a re-init. (.exe and other files got uploaded) After this, the work will be copied here, finished, probably in time.
