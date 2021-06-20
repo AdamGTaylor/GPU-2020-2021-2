@@ -6,6 +6,12 @@
 
 > The point is to make a program that does picture equalizations with parallel processing. It gets a picture, converts it to greyscale, equalizes the histogramm and outputs the equalized picture.
 
+### Results
+    
+    basic /w test_pic : ~0.7 msec
+
+    cpu-multithread /w test_pic : ~2.0 msec
+
 > Read about histogramm equalization here.
 
 ## Roadmap.
@@ -39,3 +45,7 @@
 ### 2021/06/20: basic done, chrono added, cpu-parallel first thoughts
 
 > Basic is finished with average of ~0.7 msec runtime on the small (30x30) test pic. CPU multithread version has the first thoughts in it and it is initialized.
+
+### 2021/06/20: cpu multi thread: done!
+
+> Suprisingly its slower for the test pic, compared to what is expected. The possible reason for this is that a low of "auto"s are used due to uncertainty of the returned object time. 

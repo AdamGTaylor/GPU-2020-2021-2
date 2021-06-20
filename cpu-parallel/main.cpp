@@ -45,6 +45,13 @@ void save_pic(std::vector<T> veced_pic){
     }
 }
 
+template<typename T>
+T summer(std::vector<atomic_wrapper<T>>veced_data,int i1,int i2){
+    int sum = 0;
+    for(int i=i1; i!=i2; ++i) sum+=veced_data[i].data.load();
+    return sum;
+}
+
 //the main thing herec compared to basic is that i hae multiple threads
 //this causes a bit of an issue as the first hist has to managed
 //to not be accessed to write in it by multiple threads
@@ -95,16 +102,33 @@ int main(int, char**) {
             atomic_histogram[size_t(*it)].data += 1;
         }
     };
-    //h_b here
-    auto h_v_maker = [&](std::vector<int> cdf0, int index){
-        int nominator = cdf0[index] - V_MIN;
-        int denominator = (size1 * size2 - V_MIN);
-        int val = (int)round(255*nominator/denominator);
-        //std::cout << cdf0[index] << " | " << val <<  std::endl; 
-        return val;
+    //cdf maker
+    auto gen_cdf = [&](auto it0, auto it1){
+        for(auto it=it0; it!=it1;++it){
+            //ISSUE: i hav to add +1 for some reason so i made a mistake somewhere
+            cdf[it] = summer(atomic_histogram,0,it+1);
+        }
     };
     
+
+    //h_b here
+    auto h_v_maker = [&](auto it0, auto it1){
+        for(auto it=it0; it!=it1;++it){
+            int nominator = cdf[it]- V_MIN;
+            int denominator = (size1 * size2 - V_MIN);
+            h_v[it] = (int)round(255*nominator/denominator);
+        }
+    };
+
+    auto equalizer = [&](auto it0, auto it1){
+        for(auto it=it0; it!=it1;++it){
+            eq_pic[it] = h_v[pic[it]];
+        }
+    };
+
+    //calculation
     auto time0 = std::chrono::high_resolution_clock::now();
+
     //multithreaded
     //multithread: it from [it0,it1)
     //pmf
@@ -116,29 +140,19 @@ int main(int, char**) {
 	}
     //wait on futures and add results when it is possible
     std::for_each(atomic_futures.begin(), atomic_futures.end(), [](std::future<void>& f){ f.get(); } );
-    int i = 0;
-	for(auto& h : atomic_histogram)
-	{   
-		auto q = h.data.load();
-		std::cout << i << " : " << q << std::endl;
-		count += q;
-        i++;
-	}
-    std::cout << "Count" << count << std::endl;
+    
 
-
-    /*
-    std::cout << "Amount: " << count << std::endl;
-
-    //this cannot be multithreaded easily
     //cdf
-    cdf[0] = atomic_histogram[0].data;
-    for(int i=1; i < cdf.size();++i){
-        cdf[i] = cdf[i-1] + atomic_histogram[i].data;
+    for(int n=0; n<max_num_of_threads;++n)
+    {
+        //for some reason the atomic_wrapper vector is not liked by this.
+        int it0 = low + n * high / max_num_of_threads;
+		int it1 = low + (n + 1) * high / max_num_of_threads;
+		atomic_futures[n] = std::async( std::launch::async, gen_cdf, it0, it1 );
     }
-
-    //this cannot be multithreaded easily
-    //got cdf -> search for minimum -> h(v)
+    std::for_each(atomic_futures.begin(), atomic_futures.end(), [](std::future<void>& f){ f.get(); } );
+    
+    //cdf -> amount of minimum value pixels
     bool found = true;
     for(int i=0; found && i!=cdf.size();++i){
         if(atomic_histogram[i].data!=0){
@@ -146,20 +160,28 @@ int main(int, char**) {
             found = false;
         }
     }
-
-    for(int i=0; i!=cdf.size(); ++i){
-        h_v[i] = h_v_maker(cdf,i);
+    
+    //H_V making
+    for(int n=0; n<max_num_of_threads;++n)
+    {
+        int it0 = low + n * high / max_num_of_threads;
+		int it1 = low + (n + 1) * high / max_num_of_threads;
+		atomic_futures[n] = std::async( std::launch::async, h_v_maker, it0, it1 );
     }
-
-    //multithread
-    std::cout << "H(v) created" << std::endl; 
-    for(int i=0; i!=pic.size();++i){
-        eq_pic[i] = h_v[pic[i]];
+    std::for_each(atomic_futures.begin(), atomic_futures.end(), [](std::future<void>& f){ f.get(); } );
+    //equalizing
+    for(int n=0; n<max_num_of_threads;++n)
+    {
+        int it0 = low + n * size1*size2 / max_num_of_threads;
+		int it1 = low + (n + 1) * size1 * size2 / max_num_of_threads;
+		atomic_futures[n] = std::async( std::launch::async, equalizer, it0, it1 );
     }
+    std::for_each(atomic_futures.begin(), atomic_futures.end(), [](std::future<void>& f){ f.get(); } );
+    
+
     auto time1 = std::chrono::high_resolution_clock::now();
-    std::cout << "Histogram Equalized under " << std::chrono::duration_cast<std::chrono::nanoseconds>(time1-time0).count()/pow(10,6) << " msec!"  << std::endl;
+    std::cout << "Histogram Equalized under " << std::chrono::duration_cast<std::chrono::nanoseconds>(time1-time0).count()/pow(10,6) << " msec!"  << std::endl;    save_pic(eq_pic);
     save_pic(eq_pic);
-    */
 
     return 0;
 }
