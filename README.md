@@ -34,11 +34,11 @@
 
 ## The test_pic.txt
 
-![Test Picture Histogram](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/_notebooks/pics_preview/test_pic_hist.jpeg)
+![Test Picture Histogram](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/test_pic_hist.jpeg)
 
-![Equaized Picture Histogram](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/_notebooks/pics_preview/eq_pic_hist.jpeg)
+![Equaized Picture Histogram](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/eq_pic_hist.jpeg)
 
-![Test pic](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/_notebooks/pics_preview/test_pic.jpeg)
+![Test pic](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/test_pic.jpeg)
 
 ![Equalized pic](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/eq_pic.jpeg)
 
