@@ -31,3 +31,7 @@
 ### 2021/06/19: Re-init
 
 > This repository got initialized at the wrong place, with the wrong git ignore. This was resolved by a re-init. (.exe and other files got uploaded) After this, the work will be copied here, finished, probably in time.
+
+### 2021/06/20: Basic, Almost
+
+> Due the issue of wrong initialistion, i am taking  the time to fix the code, where it can be fixed. Still fixing but the main feature are in. Realised the true power of atomic.
