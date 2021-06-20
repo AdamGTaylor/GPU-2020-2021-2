@@ -12,7 +12,7 @@
 
     cpu-multithread /w test_pic : ~2.0 msec
 
-> Read about histogramm equalization here.
+> As it seems, the test_pic is too small to use it as a refenerence. A bigger picture would make this multithread process to be better.
 
 ## Roadmap.
 
@@ -52,9 +52,13 @@
 
 ## The test_pic.txt
 
+### Histograms
+
 ![Test Picture Histogram](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/test_pic_hist.jpeg)
 
 ![Equaized Picture Histogram](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/eq_pic_hist.jpeg)
+
+### Pictures
 
 ![Test pic](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/test_pic.jpeg)
 
