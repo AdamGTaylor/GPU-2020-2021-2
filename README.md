@@ -35,3 +35,7 @@
 ### 2021/06/20: Basic, Almost
 
 > Due the issue of wrong initialistion, i am taking  the time to fix the code, where it can be fixed. Still fixing but the main feature are in. Realised the true power of atomic.
+
+### 2021/06/20: basic done, chrono added, cpu-parallel first thoughts
+
+> Basic is finished with average of ~0.7 msec runtime on the small (30x30) test pic. CPU multithread version has the first thoughts in it and it is initialized.
