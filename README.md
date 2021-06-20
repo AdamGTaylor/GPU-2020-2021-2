@@ -32,16 +32,6 @@
 
 > 4. Save the pic.
 
-## The test_pic.txt
-
-![Test Picture Histogram](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/test_pic_hist.jpeg)
-
-![Equaized Picture Histogram](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/eq_pic_hist.jpeg)
-
-![Test pic](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/test_pic.jpeg)
-
-![Equalized pic](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/eq_pic.jpeg)
-
 ## Pushes
 
 ### 2021/06/19: Re-init
@@ -59,3 +49,13 @@
 ### 2021/06/20: cpu multi thread: done!
 
 > Suprisingly its slower for the test pic, compared to what is expected. The possible reason for this is that a low of "auto"s are used due to uncertainty of the returned object time. 
+
+## The test_pic.txt
+
+![Test Picture Histogram](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/test_pic_hist.jpeg)
+
+![Equaized Picture Histogram](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/eq_pic_hist.jpeg)
+
+![Test pic](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/test_pic.jpeg)
+
+![Equalized pic](https://github.com/AdamGTaylor/GPU-2020-2021-2/blob/master/_notebooks/pics_preview/eq_pic.jpeg)
