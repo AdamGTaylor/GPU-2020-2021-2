@@ -67,6 +67,7 @@ int main(int, char**) {
         std::cout << "Succesful loading" << std::endl;
     }
     
+    auto time0 = std::chrono::high_resolution_clock::now();
     //pmf
     int count = 0;
     for(int i=0; i < pic.size();++i){
@@ -108,7 +109,8 @@ int main(int, char**) {
     for(int i=0; i!=pic.size();++i){
         eq_pic[i] = h_v[pic[i]];
     }
-    std::cout << "Histogram Equalized" << std::endl;
+    auto time1 = std::chrono::high_resolution_clock::now();
+    std::cout << "Histogram Equalized under " << std::chrono::duration_cast<std::chrono::nanoseconds>(time1-time0).count()/pow(10,6) << " msec!"  << std::endl;
     save_pic(eq_pic);
 
 
