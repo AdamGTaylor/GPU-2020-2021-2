@@ -16,6 +16,9 @@ int V_MIN = 0;
 int low = 0;
 int high = 255;
 
+int it0 = 0;
+int it1 = 0;
+
 static const int histo_size = 256;
 
 //this is a very good struct!
@@ -31,9 +34,9 @@ struct atomic_wrapper
 };
 
 template<typename T>
-void save_pic(std::vector<T> veced_pic){
+void save_pic(const std::vector<T> & veced_pic){
     int count = 0;
-    std::ofstream my_file("../../../output/test_pic.txt");
+    std::ofstream my_file("../../../output/big_pic.txt");
     my_file << size1 << " " << size2 << "\n";
     for(int i=0; i!=size1; ++i){
         for(int j=0;j!=size2-1; ++j){
@@ -46,9 +49,9 @@ void save_pic(std::vector<T> veced_pic){
 }
 
 template<typename T>
-T summer(std::vector<atomic_wrapper<T>>veced_data,int i1,int i2){
+T summer(const std::vector<atomic_wrapper<T>> & veced_data,int i1,int i2){
     int sum = 0;
-    for(int i=i1; i!=i2; ++i) sum+=veced_data[i].data.load();
+    for(int i=i1; i<=i2; ++i) sum+=veced_data[i].data.load();
     return sum;
 }
 
@@ -81,7 +84,7 @@ int main(int, char**) {
 
 
     //loading in texted picture
-    std::ifstream myfile("../../../pics/test_pic.txt");
+    std::ifstream myfile("../../../pics/big_pic.txt");
     if ( myfile.is_open() ){
         myfile >> size1;
         myfile >> size2;
@@ -90,7 +93,7 @@ int main(int, char**) {
         for(int i=0; i < size1 * size2; ++i){
             myfile >> pic[i];
         }
-        std::cout << "Succesful loading" << std::endl;
+        std::cout << "Succesful loading:" << size1 << "x" << size2 << std::endl;
     }
 
     //"lambdas"
@@ -106,6 +109,8 @@ int main(int, char**) {
     auto gen_cdf = [&](auto it0, auto it1){
         for(auto it=it0; it!=it1;++it){
             //ISSUE: i hav to add +1 for some reason so i made a mistake somewhere
+            //FOUND: instead of i!=i2 -> i=<i2, this way it steps on the [0,it]
+            //       instead of [0,it) (becomes incluse)
             cdf[it] = summer(atomic_histogram,0,it+1);
         }
     };
@@ -134,9 +139,9 @@ int main(int, char**) {
     //pmf
     for(int n=0; n<max_num_of_threads; ++n )
 	{
-		auto it0 = pic.begin() + n * pic.size() / max_num_of_threads;
-		auto it1 = pic.begin() + (n + 1) * pic.size() / max_num_of_threads;
-		atomic_futures[n] = std::async( std::launch::async, atomic_hist, it0, it1 );
+		auto itv0 = pic.begin() + n * pic.size() / max_num_of_threads;
+		auto itv1 = pic.begin() + (n + 1) * pic.size() / max_num_of_threads;
+		atomic_futures[n] = std::async( std::launch::async, atomic_hist, itv0, itv1 );
 	}
     //wait on futures and add results when it is possible
     std::for_each(atomic_futures.begin(), atomic_futures.end(), [](std::future<void>& f){ f.get(); } );
@@ -146,8 +151,8 @@ int main(int, char**) {
     for(int n=0; n<max_num_of_threads;++n)
     {
         //for some reason the atomic_wrapper vector is not liked by this.
-        int it0 = low + n * high / max_num_of_threads;
-		int it1 = low + (n + 1) * high / max_num_of_threads;
+        it0 = low + n * high / max_num_of_threads;
+		it1 = low + (n + 1) * high / max_num_of_threads;
 		atomic_futures[n] = std::async( std::launch::async, gen_cdf, it0, it1 );
     }
     std::for_each(atomic_futures.begin(), atomic_futures.end(), [](std::future<void>& f){ f.get(); } );
@@ -163,17 +168,20 @@ int main(int, char**) {
     
     //H_V making
     for(int n=0; n<max_num_of_threads;++n)
-    {
-        int it0 = low + n * high / max_num_of_threads;
-		int it1 = low + (n + 1) * high / max_num_of_threads;
+    {   
+        //as it was pointed out, this is a bit problematic
+        //int basicly just cuts off the "extra" present in double or float
+        // (12.3 -> 12; 12.6 -> 12, maybe round?)
+        it0 = low + n * high / max_num_of_threads;
+		it1 = low + (n + 1) * high / max_num_of_threads;
 		atomic_futures[n] = std::async( std::launch::async, h_v_maker, it0, it1 );
     }
     std::for_each(atomic_futures.begin(), atomic_futures.end(), [](std::future<void>& f){ f.get(); } );
     //equalizing
     for(int n=0; n<max_num_of_threads;++n)
     {
-        int it0 = low + n * size1*size2 / max_num_of_threads;
-		int it1 = low + (n + 1) * size1 * size2 / max_num_of_threads;
+        it0 = low + n * size1*size2 / max_num_of_threads;
+		it1 = low + (n + 1) * size1 * size2 / max_num_of_threads;
 		atomic_futures[n] = std::async( std::launch::async, equalizer, it0, it1 );
     }
     std::for_each(atomic_futures.begin(), atomic_futures.end(), [](std::future<void>& f){ f.get(); } );

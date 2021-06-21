@@ -25,9 +25,9 @@ struct atomic_wrapper
 };
 
 template<typename T>
-void save_pic(std::vector<T> veced_pic){
+void save_pic(std::vector<T> & veced_pic){
     int count = 0;
-    std::ofstream my_file("../../../output/test_pic.txt");
+    std::ofstream my_file("../../../output/big_pic.txt");
     my_file << size1 << " " << size2 << "\n";
     for(int i=0; i!=size1; ++i){
         for(int j=0;j!=size2-1; ++j){
@@ -55,7 +55,7 @@ int main(int, char**) {
 	//std::cout << "Using " << max_num_of_threads << " threads.\n";
 
     //loading in texted picture
-    std::ifstream myfile("../../../pics/test_pic.txt");
+    std::ifstream myfile("../../../pics/big_pic.txt");
     if ( myfile.is_open() ){
         myfile >> size1;
         myfile >> size2;

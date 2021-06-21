@@ -8,9 +8,13 @@
 
 ### Results
     
-    basic /w test_pic : ~0.7 msec
+    basic(debug) /w test_pic(30x30) : ~0.7 msec
 
-    cpu-multithread /w test_pic : ~2.0 msec
+    cpu-multithread(debug) /w test_pic(445x445) : ~1.1 msec
+
+    basic(release) /w big_pic(30x30) : ~0.9 msec
+
+    cpu-multithread(release) /w big_pic(445x445) : ~1.6 msec
 
 > As it seems, the test_pic is too small to use it as a refenerence. A bigger picture would make this multithread process to be better.
 
@@ -49,6 +53,11 @@
 ### 2021/06/20: cpu multi thread: done!
 
 > Suprisingly its slower for the test pic, compared to what is expected. The possible reason for this is that a low of "auto"s are used due to uncertainty of the returned object time. 
+
+### 2021/06/21: cpu multi update.
+
+> With tips being given from my lecturer, I was able to cut down the runtime to 1-1.1msec. The problem was that I forgot that rather than the names of the object, a reference should be given to funtions. (the summer() didn't have it) This caused a constant copying happening.
+> The issue with i+1 was located. The problem was that i!=i2 causes i2 to be not included in this interval ( [i1,i2) -> [i1,i2] ).
 
 ## The test_pic.txt
 
