@@ -10,9 +10,9 @@
     
     basic(debug) /w test_pic(30x30) : ~0.7 msec
 
-    cpu-multithread(debug) /w test_pic(445x445) : ~1.1 msec
+    cpu-multithread(debug) /w test_pic(30x30) : ~1.1 msec
 
-    basic(release) /w big_pic(30x30) : ~0.9 msec
+    basic(release) /w big_pic(445x445) : ~0.9 msec
 
     cpu-multithread(release) /w big_pic(445x445) : ~1.6 msec
 
