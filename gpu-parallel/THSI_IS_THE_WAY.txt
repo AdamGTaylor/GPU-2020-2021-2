@@ -1,0 +1,5 @@
+E:\PROGIK\OpenCL\vcpkg\installed\x86-windows\include\CL
+
+cmake --build .\build 
+
+.\build\HelloOpenCL.exe

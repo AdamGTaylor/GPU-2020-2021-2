@@ -111,11 +111,10 @@ int main(int, char**) {
             //ISSUE: i hav to add +1 for some reason so i made a mistake somewhere
             //FOUND: instead of i!=i2 -> i=<i2, this way it steps on the [0,it]
             //       instead of [0,it) (becomes incluse)
-            cdf[it] = summer(atomic_histogram,0,it+1);
+            cdf[it] = summer(atomic_histogram,0,it);
         }
     };
     
-
     //h_b here
     auto h_v_maker = [&](auto it0, auto it1){
         for(auto it=it0; it!=it1;++it){
