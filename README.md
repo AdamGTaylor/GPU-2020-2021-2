@@ -59,6 +59,10 @@
 > With tips being given from my lecturer, I was able to cut down the runtime to 1-1.1msec. The problem was that I forgot that rather than the names of the object, a reference should be given to funtions. (the summer() didn't have it) This caused a constant copying happening.
 > The issue with i+1 was located. The problem was that i!=i2 causes i2 to be not included in this interval ( [i1,i2) -> [i1,i2] ).
 
+### 2021/06/22: opencl is working
+
+> This update mostly consist of fixes, as Opencl didn't get included into c/c++ files. The source of the issue was that the 32 bit version was downloaded, which is not found by CMake naturally, but the powershell developer for vs code does find it anyway. After some tedious testing, i was able to run some codes.
+
 ## The test_pic.txt
 
 ### Histograms
