@@ -43,6 +43,8 @@ __kernel void gpu_histo_shared_atomics( __global unsigned int* output, __global 
     }
 }
 
+
+//i still need you, as the block are holding my precious data....
 __kernel void gpu_histo_accumulate(__global unsigned int* out, __global const unsigned int* in, int nBlocks)
 {
     //each thread sums one shade of the r, g, b histograms
@@ -55,6 +57,7 @@ __kernel void gpu_histo_accumulate(__global unsigned int* out, __global const un
             sum += in[i + 256 * j];
         }            
         out[i] = sum;
-        printf("%d %u\n", i, out[i]);
+        //a strange debug tool, only works for low amount of data
+        //printf("%d %u\n", i, out[i]);
     }
 }

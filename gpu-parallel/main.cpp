@@ -179,7 +179,7 @@ int main()
         if(status != CL_SUCCESS){ std::cout << "Cannot create input buffer: " << status << "\n"; return -1; }
         
         //buffer of partials has to be the size of bufferinput * block_num
-        auto bufferPartials = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS,  nBlocksH*256*sizeof(unsigned int), nullptr,  &status);
+        auto bufferPartials = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY,  nBlocksH*256*sizeof(unsigned int), nullptr,  &status);
         if(status != CL_SUCCESS){ std::cout << "Cannot create partial buffer: " << status << "\n"; return -1; }
         
         //filling the buffer with zeros
@@ -239,9 +239,11 @@ int main()
 
         clReleaseEvent(evt[0]);
         clReleaseEvent(evt[1]);
-        
-        for(int i=0; i < 256; ++i) {
-            std::cout << i << " : " << tmp[i] << std::endl;
+
+        //copy data to a more visible data object
+        for(int i=0; i < atomic_histogram.size(); ++i){
+            atomic_histogram[i] = tmp[i];
+            std::cout<< i << " : "<<atomic_histogram[i] <<std::endl;
         }
         
         clReleaseMemObject(bufferInput);
