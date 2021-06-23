@@ -1,5 +1,10 @@
 //i will use global atomics shown in atomics/atomics.cl
 //after some reading, it turns out that local evaluations are cost effective and faster!
+//oh, the histo_atomics has some issue to run it
+//output: global memory
+//input: the pic
+
+//histo: local evaluation -> gets added to global in here
 __kernel void gpu_histo_shared_atomics( __global unsigned int* output, __global int* input, int W )
 {
     //histograms are in shared memory:
@@ -31,7 +36,7 @@ __kernel void gpu_histo_shared_atomics( __global unsigned int* output, __global 
     int I = B*256;
     __global unsigned int* H = output + I;
 
-    //Copy shared memory histograms to globl memory:
+    //Copy shared memory histograms to global memory:
     for (int i = LinID; i < 256; i += Nthreads)
     {
         H[i] = histo[i];

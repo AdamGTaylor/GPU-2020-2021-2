@@ -32,6 +32,7 @@ static const int bins = 256;
 
 static const std::string InputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/pics/test_pic.txt");
 static const std::string OutputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/output/test_pic.txt");
+void fromLinearMemory( std::vector<unsigned int> & input, std::vector<unsigned int>& veced);
 
 template<typename T>
 void save_pic(const std::vector<T> & veced_pic);
@@ -57,7 +58,7 @@ int main()
 
     
     //my hist is in what?
-    std::vector<cl_int> atomic_histogram(256,0);
+    std::vector<unsigned int> atomic_histogram(256,0);
     
     std::vector<cl_int> cdf(256,0);        //point mass function of pic
     std::vector<cl_int> h_v(256,0);        //new values for eq_pic created from eq
@@ -82,8 +83,8 @@ int main()
     std::vector<cl_platform_id> platforms;
     std::vector<std::vector<cl_device_id>> devices;
     //block num
-    static const int blocksize = 16;    //blocksize
-    int nBlocksH = 0;                   //number if block vertically
+    static const int block_size = 4;    //blocksize
+    int nBlocksH = size2 / block_size;                   //number if block vertically
     
     status = clGetPlatformIDs(0, nullptr, &numPlatforms);
     if(status != CL_SUCCESS){ std::cout << "Cannot get number of platforms: " << status << "\n"; return -1; }
@@ -166,8 +167,95 @@ int main()
 
 	auto kernel_shared_atomics = clCreateKernel(program, "gpu_histo_shared_atomics", &status);
     if(status != CL_SUCCESS){ std::cout << "Cannot create kernel 'gpu_histo_shared_atomics': " << status << "\n"; return -1; }
-    //now we have a succesful kernel created!
 
+    auto kernel_accumulate = clCreateKernel(program, "gpu_histo_accumulate", &status);
+    if(status != CL_SUCCESS){ std::cout << "Cannot create kernel 'gpu_histo_accumulate': " << status << "\n"; return -1; }
+    //now we have a succesful kernel created!
+    
+    float dt2 = 0.0f;
+    {   
+        //input buffer has to be the size of pic! i have to give the pic pointer too
+        auto bufferInput    = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size1*size2*sizeof(cl_int), pic.data(), &status);
+        if(status != CL_SUCCESS){ std::cout << "Cannot create input buffer: " << status << "\n"; return -1; }
+        
+        //buffer of partials has to be the size of bufferinput * block_num
+        auto bufferPartials = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS,  nBlocksH*256*sizeof(unsigned int), nullptr,  &status);
+        if(status != CL_SUCCESS){ std::cout << "Cannot create partial buffer: " << status << "\n"; return -1; }
+        
+        //filling the buffer with zeros
+        cl_int zero = 0;
+        status = clEnqueueFillBuffer(queue, bufferPartials, &zero, sizeof(cl_uchar4), 0, nBlocksH*256*sizeof(unsigned int), 0, nullptr, nullptr);
+        if(status != CL_SUCCESS){ std::cout << "Cannot zero partial buffer: " << status << "\n"; return -1; }
+
+        status = clFinish(queue);
+        if(status != CL_SUCCESS){ std::cout << "Cannot finish queue: " << status << "\n"; return -1; }
+
+        auto bufferOutput  = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY,  256*sizeof(unsigned int), nullptr,  &status);
+        if(status != CL_SUCCESS){ std::cout << "Cannot create output buffer: " << status << "\n"; return -1; }
+
+        cl_event evt[2];
+
+        //NOTE: tehcnically the second kernel is unneeded, but i didn't want to differ from the base, if a problem appears
+
+        //First kernel of global histograms:
+        {
+            status = clSetKernelArg(kernel_shared_atomics, 0, sizeof(bufferPartials), &bufferPartials); if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 1 arg 0: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_shared_atomics, 1, sizeof(bufferInput),    &bufferInput);    if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 1 arg 1: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_shared_atomics, 2, sizeof(int),            &size2);          if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 1 arg 2: " << status << "\n"; return -1; }
+
+            size_t kernel_global_size[2] = {(size_t)block_size, (size_t)nBlocksH*block_size};
+            size_t kernel_local_size[2] = {(size_t)block_size, (size_t)block_size};
+	        status = clEnqueueNDRangeKernel(queue, kernel_shared_atomics, 2, nullptr, kernel_global_size, kernel_local_size, 0, nullptr, &evt[0]);
+            if(status != CL_SUCCESS){ std::cout << "Cannot enqueue kernel 3: " << status << "\n"; return -1; }
+            if(status == CL_SUCCESS){std::cout << "Histogramm is done:" << status << std::endl; }
+        }
+        
+        //THIS IS FOR ACCUMULATING RESULTS FOR EACH HIST -> I DON'T HAVE MANY, JUST ONE HIST
+        //Second kernel: accumulate partial results:
+        {
+            //args for the function
+            status = clSetKernelArg(kernel_accumulate, 0, sizeof(bufferOutput),   &bufferOutput);   if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 2 arg 0: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_accumulate, 1, sizeof(bufferPartials), &bufferPartials); if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 2 arg 1: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_accumulate, 2, sizeof(int),            &nBlocksH);       if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 2 arg 2: " << status << "\n"; return -1; }
+
+            size_t kernel_global_size[1] = {(size_t)(256)};
+	        status = clEnqueueNDRangeKernel(queue, kernel_accumulate, 1, nullptr, kernel_global_size, nullptr, 0, nullptr, &evt[1]);
+            if(status != CL_SUCCESS){ std::cout << "Cannot enqueue kernel 4: " << status << "\n"; return -1; }
+        }
+        
+        std::vector<unsigned int> tmp(256);
+        
+        //reading the buffer!
+        status = clEnqueueReadBuffer(queue, bufferOutput, CL_TRUE, 0, 256*sizeof(unsigned int), tmp.data(), 1, &evt[1], nullptr);
+        if(status != CL_SUCCESS){ std::cout << "Cannot read buffer: " << status << "\n"; return -1; }
+        std::cout << "Reached" << std::endl;
+
+        //time measurement
+        cl_ulong t1_0, t1_1;
+        status = clGetEventProfilingInfo(evt[0], CL_PROFILING_COMMAND_START, sizeof(t1_0), &t1_0, nullptr);
+        status = clGetEventProfilingInfo(evt[1], CL_PROFILING_COMMAND_END,   sizeof(t1_1), &t1_1, nullptr);
+        dt2 = (t1_1 - t1_0)*0.001f*0.001f;
+        std::cout << "GPU shared atomics computation took: " << dt2 << " ms\n";
+
+        clReleaseEvent(evt[0]);
+        clReleaseEvent(evt[1]);
+
+        for(int i=0; i < 256; ++i) {
+            std::cout << i << " : " << &tmp[i] << std::endl;
+        }
+
+        clReleaseMemObject(bufferInput);
+        clReleaseMemObject(bufferPartials);
+        clReleaseMemObject(bufferOutput);
+        
+    }
+    
+    clReleaseKernel(kernel_shared_atomics);
+    clReleaseProgram(program);
+    clReleaseCommandQueue(queue);
+    clReleaseContext(context);
+    clReleaseDevice(device);
+    
     return 0;
 }
 
@@ -191,4 +279,10 @@ T summer(const std::vector<T> & veced_data,int i1,int i2){
     int sum = 0;
     for(int i=i1; i<=i2; ++i) sum+=veced_data[i].data.load();
     return sum;
+}
+
+void fromLinearMemory( std::vector<unsigned int> & input, std::vector<unsigned int> veced){
+    for(int i=0; i<256; ++i){
+        veced[i] = input[0*256+i];
+    }
 }

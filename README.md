@@ -63,6 +63,10 @@
 
 > This update mostly consist of fixes, as Opencl didn't get included into c/c++ files. The source of the issue was that the 32 bit version was downloaded, which is not found by CMake naturally, but the powershell developer for vs code does find it anyway. After some tedious testing, i was able to run some codes.
 
+### 2021/06/22: h/blocksize division problem
+
+> Earlier I could easily make bins for each thread to make them go through their assigned interval and with this, the bins contained different amounts of values. With OpenCL I have to tell the blocksize for this. But if the blocksize is not divisible amount of data, to get the blocks number, there are mismatches. Any upward rounding gives a wrong result at 0.
+
 ## The test_pic.txt
 
 ### Histograms
