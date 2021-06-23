@@ -1,12 +1,16 @@
+#include <iostream>
+#include <fstream>
+
 #include <vector>
 #include <array>
 #include <string>
+
 #include <numeric>
 #include <algorithm>
 #include <random>
+#include <cmath>
+
 #include <chrono>
-#include <iostream>
-#include <fstream>
 
 #ifdef __APPLE__ //Mac OSX has a different name for the header file
 #include <OpenCL/opencl.h>
@@ -26,8 +30,8 @@ static const int low = 0;           //min for bins
 static const int high = 255;        //max for bins
 static const int bins = 256;
 
-static const std::string InputFileName(" ");
-static const std::string OutputFileName(" ");
+static const std::string InputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/pics/test_pic.txt");
+static const std::string OutputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/output/test_pic.txt");
 
 template<typename T>
 void save_pic(const std::vector<T> & veced_pic);
@@ -48,16 +52,28 @@ void checkErr(cl_int err, const char * name)
 int main()
 {      
     //creating objects from pics
-    std::vector<int> pic;               //input pic
-    std::vector<int> eq_pic;            //output pic
+    std::vector<cl_int> pic;               //input pic
+    std::vector<cl_int> eq_pic;            //output pic
 
     
     //my hist is in what?
     std::vector<cl_int> atomic_histogram(256,0);
     
-    std::vector<int> cdf(256,0);        //point mass function of pic
-    std::vector<int> h_v(256,0);        //new values for eq_pic created from eq
+    std::vector<cl_int> cdf(256,0);        //point mass function of pic
+    std::vector<cl_int> h_v(256,0);        //new values for eq_pic created from eq
 
+        //loading in texted picture
+    std::ifstream myfile(InputFileName);
+    if ( myfile.is_open() ){
+        myfile >> size1;
+        myfile >> size2;
+        pic.resize(size1*size2);
+        eq_pic.resize(size1*size2);
+        for(int i=0; i < size1 * size2; ++i){
+            myfile >> pic[i];
+        }
+        std::cout << "Succesful loading:" << size1 << "x" << size2 << std::endl;
+    }
 
     //OpenCL stuff
     // queue -> device -> platform -> context -> kernel
