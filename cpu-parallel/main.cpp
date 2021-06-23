@@ -36,7 +36,7 @@ struct atomic_wrapper
 template<typename T>
 void save_pic(const std::vector<T> & veced_pic){
     int count = 0;
-    std::ofstream my_file("../../../output/big_pic.txt");
+    std::ofstream my_file("../../../output/test_pic.txt");
     my_file << size1 << " " << size2 << "\n";
     for(int i=0; i!=size1; ++i){
         for(int j=0;j!=size2-1; ++j){
@@ -84,7 +84,7 @@ int main(int, char**) {
 
 
     //loading in texted picture
-    std::ifstream myfile("../../../pics/big_pic.txt");
+    std::ifstream myfile("../../../pics/test_pic.txt");
     if ( myfile.is_open() ){
         myfile >> size1;
         myfile >> size2;
@@ -187,6 +187,10 @@ int main(int, char**) {
     
 
     auto time1 = std::chrono::high_resolution_clock::now();
+    for(int i=0; i!=atomic_histogram.size(); ++i){
+        int q = atomic_histogram[i].data.load();
+        std::cout << i << " : " << q << std::endl;
+    }
     std::cout << "Histogram Equalized under " << std::chrono::duration_cast<std::chrono::nanoseconds>(time1-time0).count()/pow(10,6) << " msec!"  << std::endl;    save_pic(eq_pic);
     save_pic(eq_pic);
 

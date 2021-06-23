@@ -184,7 +184,7 @@ int main()
         
         //filling the buffer with zeros
         cl_int zero = 0;
-        status = clEnqueueFillBuffer(queue, bufferPartials, &zero, sizeof(cl_uchar4), 0, nBlocksH*256*sizeof(unsigned int), 0, nullptr, nullptr);
+        status = clEnqueueFillBuffer(queue, bufferPartials, &zero, sizeof(cl_int), 0, nBlocksH*256*sizeof(unsigned int), 0, nullptr, nullptr);
         if(status != CL_SUCCESS){ std::cout << "Cannot zero partial buffer: " << status << "\n"; return -1; }
 
         status = clFinish(queue);
@@ -228,7 +228,7 @@ int main()
         //reading the buffer!
         status = clEnqueueReadBuffer(queue, bufferOutput, CL_TRUE, 0, 256*sizeof(unsigned int), tmp.data(), 1, &evt[1], nullptr);
         if(status != CL_SUCCESS){ std::cout << "Cannot read buffer: " << status << "\n"; return -1; }
-        std::cout << "Reached" << std::endl;
+
 
         //time measurement
         cl_ulong t1_0, t1_1;
@@ -239,11 +239,11 @@ int main()
 
         clReleaseEvent(evt[0]);
         clReleaseEvent(evt[1]);
-
+        
         for(int i=0; i < 256; ++i) {
-            std::cout << i << " : " << &tmp[i] << std::endl;
+            std::cout << i << " : " << tmp[i] << std::endl;
         }
-
+        
         clReleaseMemObject(bufferInput);
         clReleaseMemObject(bufferPartials);
         clReleaseMemObject(bufferOutput);

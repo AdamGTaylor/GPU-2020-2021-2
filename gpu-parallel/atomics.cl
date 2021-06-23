@@ -55,5 +55,6 @@ __kernel void gpu_histo_accumulate(__global unsigned int* out, __global const un
             sum += in[i + 256 * j];
         }            
         out[i] = sum;
+        printf("%d %u\n", i, out[i]);
     }
 }
