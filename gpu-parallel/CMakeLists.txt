@@ -13,7 +13,7 @@ set(CMAKE_MODULE_PATH
 find_package(OpenCL REQUIRED)
 find_package(Threads REQUIRED)
 
-set(Sources Main.cpp)
+set(Sources main.cpp)
 set(Kernels atomics.cl)
 
 add_executable(${PROJECT_NAME}
