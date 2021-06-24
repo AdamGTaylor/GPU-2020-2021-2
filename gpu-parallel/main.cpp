@@ -179,9 +179,13 @@ int main()
     auto kernel_hv = clCreateKernel(program, "gpu_global_h_v", &status);
     if(status != CL_SUCCESS){ std::cout << "Cannot create kernel 'gpu_global_h_v': " << status << "\n"; return -1; }
     //now we have a succesful kernel created!
+
+    auto kernel_eq = clCreateKernel(program, "gpu_global_eq", &status);
+    if(status != CL_SUCCESS){ std::cout << "Cannot create kernel 'gpu_global_eq': " << status << "\n"; return -1; }
+    //now we have a succesful kernel created!
     
-    float dt2 = 0.0f;
-    float dt3 = 0.0f;
+    float dt1 = 0.0f; float dt2 = 0.0f; float dt3 = 0.0f; float dt4 = 0.0f; float dt5 = 0.0f;
+
     {   
         //input buffer has to be the size of pic! i have to give the pic pointer too
         auto bufferInput    = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size1*size2*sizeof(cl_int), pic.data(), &status);
@@ -200,6 +204,9 @@ int main()
         auto bufferHV = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, 256*sizeof(int), nullptr, &status);
         if(status != CL_SUCCESS){ std::cout << "Cannot create HV buffer: " << status << "\n"; return -1; }
 
+        auto bufferOutput   = clCreateBuffer(context,  CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, size1*size2*sizeof(cl_int), nullptr, &status);
+        if(status != CL_SUCCESS){ std::cout << "Cannot create input buffer: " << status << "\n"; return -1; }
+
         //filling the buffer with zeros
         cl_int zero = 0;
         status = clEnqueueFillBuffer(queue, bufferPartials, &zero, sizeof(cl_int), 0, nBlocksH*256*sizeof(unsigned int), 0, nullptr, nullptr);
@@ -208,7 +215,7 @@ int main()
         status = clFinish(queue);
         if(status != CL_SUCCESS){ std::cout << "Cannot finish queue: " << status << "\n"; return -1; }
 
-        cl_event evt[4];
+        cl_event evt[5];
 
         //NOTE: tehcnically the second kernel is unneeded, but i didn't want to differ from the base, if a problem appears
 
@@ -273,28 +280,54 @@ int main()
         }
         status = clEnqueueReadBuffer(queue, bufferHV, CL_TRUE, 0, 256*sizeof(int), h_v.data(), 1, &evt[3], nullptr);
 
+        //Fifth kernel to generate eq_pic
+        {
+            status = clSetKernelArg(kernel_eq, 0, sizeof(bufferOutput),    &bufferOutput);    if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 5 arg 0: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_eq, 1, sizeof(bufferInput),     &bufferInput);     if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 5 arg 1: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_eq, 2, sizeof(bufferHV),        &bufferHV);        if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 5 arg 2: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_eq, 3, sizeof(int),             &size1);           if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 5 arg 3: " << status << "\n"; return -1; }
+
+            size_t kernel_global_size4[2] = {(size_t)size1,(size_t)size2};
+            status = clEnqueueNDRangeKernel(queue, kernel_eq, 2, nullptr, kernel_global_size4, nullptr, 0, nullptr, &evt[4]);
+            if(status != CL_SUCCESS){ std::cout << "Cannot enqueue kernel 5: " << status << "\n"; return -1; }
+        }
+
+        status = clEnqueueReadBuffer(queue, bufferOutput, CL_TRUE, 0, size1*size2*sizeof(unsigned int), eq_pic.data(), 1, &evt[4], nullptr);
+
+
 
         //time measurement
-        cl_ulong t1_0, t1_1,t2_1,t2_2;
+        cl_ulong t1_0, t1_1, t2_0, t2_1, t3_0, t3_1, t4_0,t4_1,t5_0,t5_1;
         status = clGetEventProfilingInfo(evt[0], CL_PROFILING_COMMAND_START, sizeof(t1_0), &t1_0, nullptr);
-        status = clGetEventProfilingInfo(evt[1], CL_PROFILING_COMMAND_END,   sizeof(t1_1), &t1_1, nullptr);
-        status = clGetEventProfilingInfo(evt[0], CL_PROFILING_COMMAND_START, sizeof(t2_1), &t2_1, nullptr);
-        status = clGetEventProfilingInfo(evt[3], CL_PROFILING_COMMAND_END,   sizeof(t2_2), &t2_2, nullptr);
-        dt2 = (t1_1 - t1_0)*0.001f*0.001f;
-        dt3 = (t2_2 - t2_1)*0.001f*0.001f;
-        std::cout << "GPU shared atomics computation took: \t" << dt2 << " ms\n";
-        std::cout << "GPU Global CDF computation took: \t" << dt3 << " ms\n";
+        status = clGetEventProfilingInfo(evt[0], CL_PROFILING_COMMAND_END,   sizeof(t1_1), &t1_1, nullptr);
+        status = clGetEventProfilingInfo(evt[1], CL_PROFILING_COMMAND_START, sizeof(t2_0), &t2_0, nullptr);
+        status = clGetEventProfilingInfo(evt[1], CL_PROFILING_COMMAND_END,   sizeof(t2_1), &t2_1, nullptr);
+        status = clGetEventProfilingInfo(evt[2], CL_PROFILING_COMMAND_START, sizeof(t3_0), &t3_0, nullptr);
+        status = clGetEventProfilingInfo(evt[2], CL_PROFILING_COMMAND_END,   sizeof(t3_1), &t3_1, nullptr);
+        status = clGetEventProfilingInfo(evt[3], CL_PROFILING_COMMAND_START, sizeof(t4_0), &t4_0, nullptr);
+        status = clGetEventProfilingInfo(evt[3], CL_PROFILING_COMMAND_END,   sizeof(t4_1), &t4_1, nullptr);
+        status = clGetEventProfilingInfo(evt[4], CL_PROFILING_COMMAND_START, sizeof(t5_0), &t5_0, nullptr);
+        status = clGetEventProfilingInfo(evt[4], CL_PROFILING_COMMAND_END,   sizeof(t5_1), &t5_1, nullptr);
+        dt1 = (t1_1 - t1_0)*0.001f*0.001f;
+        dt2 = (t2_1 - t2_0)*0.001f*0.001f;
+        dt3 = (t3_1 - t3_0)*0.001f*0.001f;
+        dt4 = (t4_1 - t4_0)*0.001f*0.001f;
+        dt5 = (t5_1 - t5_0)*0.001f*0.001f;
+        std::cout << "GPU Histogramm Equalization computation took: \t" << dt1 << " + " << dt2 << " + " << dt3 << " + " << dt4 << " + " << dt5 << " ms\n";
 
 
-        
+
+        /*
         for(int i=0; i < atomic_histogram.size(); ++i){
             std::cout<< i << " : " << atomic_histogram[i] << " : " << cdf[i] << " : " << h_v[i] <<std::endl;
         }
-        
-
+        */
+        //there has to be a mor elegant way to do this...
         clReleaseEvent(evt[0]);
         clReleaseEvent(evt[1]);
         clReleaseEvent(evt[2]);
+        clReleaseEvent(evt[3]);
+        clReleaseEvent(evt[4]);
         //release stuf from previous kernels
         clReleaseMemObject(bufferHist);
         clReleaseMemObject(bufferCDF);
@@ -306,10 +339,14 @@ int main()
     clReleaseKernel(kernel_shared_atomics);
     clReleaseKernel(kernel_accumulate);
     clReleaseKernel(kernel_cdf);
+    clReleaseKernel(kernel_hv);
+    clReleaseKernel(kernel_eq);
     clReleaseProgram(program);
     clReleaseCommandQueue(queue);
     clReleaseContext(context);
     clReleaseDevice(device);
+
+    save_pic(eq_pic);
     
     return 0;
 }
@@ -317,7 +354,7 @@ int main()
 template<typename T>
 void save_pic(const std::vector<T> & veced_pic){
     int count = 0;
-    std::ofstream my_file("../../../output/big_pic.txt");
+    std::ofstream my_file("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/output/test_pic.txt");
     my_file << size1 << " " << size2 << "\n";
     for(int i=0; i!=size1; ++i){
         for(int j=0;j!=size2-1; ++j){

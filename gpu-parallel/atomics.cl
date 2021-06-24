@@ -92,3 +92,9 @@ __kernel void gpu_global_h_v( __global int* output, __global int* input, int V_M
 }
 
 //eq_pic
+__kernel void gpu_global_eq( __global unsigned int* output, __global unsigned int* in_pic, __global int* in_hv, int size1)
+{
+    int row = get_global_id(0);
+    int col = get_global_id(1);
+    output[col + row*size1] = in_hv[in_pic[col + row*size1]];
+}
