@@ -30,8 +30,8 @@ static const int low = 0;           //min for bins
 static const int high = 255;        //max for bins
 static const int bins = 256;
 
-static const std::string InputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/pics/test_pic.txt");
-static const std::string OutputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/output/test_pic.txt");
+static const std::string InputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/pics/big_pic.txt");
+static const std::string OutputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/output/big_pic.txt");
 void fromLinearMemory( std::vector<unsigned int> & input, std::vector<unsigned int>& veced);
 
 template<typename T>
@@ -355,7 +355,7 @@ int main()
 template<typename T>
 void save_pic(const std::vector<T> & veced_pic){
     int count = 0;
-    std::ofstream my_file("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/output/test_pic.txt");
+    std::ofstream my_file(OutputFileName);
     my_file << size1 << " " << size2 << "\n";
     for(int i=0; i!=size1; ++i){
         for(int j=0;j!=size2-1; ++j){
