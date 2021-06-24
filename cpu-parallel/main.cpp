@@ -107,7 +107,7 @@ int main(int, char**) {
     };
     //cdf maker
     auto gen_cdf = [&](auto it0, auto it1){
-        for(auto it=it0; it!=it1;++it){
+        for(auto it=it0; it<=it1;++it){
             //ISSUE: i hav to add +1 for some reason so i made a mistake somewhere
             //FOUND: instead of i!=i2 -> i=<i2, this way it steps on the [0,it]
             //       instead of [0,it) (becomes incluse)
@@ -189,7 +189,7 @@ int main(int, char**) {
     auto time1 = std::chrono::high_resolution_clock::now();
     for(int i=0; i!=atomic_histogram.size(); ++i){
         int q = atomic_histogram[i].data.load();
-        std::cout << i << " : " << q << std::endl;
+        std::cout << i << " : " << q  << " : " << cdf[i] << std::endl;
     }
     std::cout << "Histogram Equalized under " << std::chrono::duration_cast<std::chrono::nanoseconds>(time1-time0).count()/pow(10,6) << " msec!"  << std::endl;    save_pic(eq_pic);
     save_pic(eq_pic);

@@ -56,14 +56,12 @@ int main()
     std::vector<cl_int> pic;               //input pic
     std::vector<cl_int> eq_pic;            //output pic
 
-    
-    //my hist is in what?
     std::vector<unsigned int> atomic_histogram(256,0);
-    
     std::vector<cl_int> cdf(256,0);        //point mass function of pic
     std::vector<cl_int> h_v(256,0);        //new values for eq_pic created from eq
 
-        //loading in texted picture
+    int V_MIN = 0;
+    //loading in texted picture
     std::ifstream myfile(InputFileName);
     if ( myfile.is_open() ){
         myfile >> size1;
@@ -83,8 +81,11 @@ int main()
     std::vector<cl_platform_id> platforms;
     std::vector<std::vector<cl_device_id>> devices;
     //block num
-    static const int block_size = 4;    //blocksize
-    int nBlocksH = size2 / block_size;                   //number if block vertically
+    static const int block_size = 6;    //blocksize    
+    //YE DIVISION WITH 4 IS NOT LIKED
+    double ejnye = (size2 / block_size);
+    std::cout << ejnye << std::endl; 
+    int nBlocksH = size2 / block_size;  //number if block vertically
     
     status = clGetPlatformIDs(0, nullptr, &numPlatforms);
     if(status != CL_SUCCESS){ std::cout << "Cannot get number of platforms: " << status << "\n"; return -1; }
@@ -171,8 +172,16 @@ int main()
     auto kernel_accumulate = clCreateKernel(program, "gpu_histo_accumulate", &status);
     if(status != CL_SUCCESS){ std::cout << "Cannot create kernel 'gpu_histo_accumulate': " << status << "\n"; return -1; }
     //now we have a succesful kernel created!
+
+    auto kernel_cdf = clCreateKernel(program, "gpu_global_cdf", &status);
+    if(status != CL_SUCCESS){ std::cout << "Cannot create kernel 'gpu_global_cdf': " << status << "\n"; return -1; }
+
+    auto kernel_hv = clCreateKernel(program, "gpu_global_h_v", &status);
+    if(status != CL_SUCCESS){ std::cout << "Cannot create kernel 'gpu_global_h_v': " << status << "\n"; return -1; }
+    //now we have a succesful kernel created!
     
     float dt2 = 0.0f;
+    float dt3 = 0.0f;
     {   
         //input buffer has to be the size of pic! i have to give the pic pointer too
         auto bufferInput    = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size1*size2*sizeof(cl_int), pic.data(), &status);
@@ -181,7 +190,16 @@ int main()
         //buffer of partials has to be the size of bufferinput * block_num
         auto bufferPartials = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY,  nBlocksH*256*sizeof(unsigned int), nullptr,  &status);
         if(status != CL_SUCCESS){ std::cout << "Cannot create partial buffer: " << status << "\n"; return -1; }
-        
+
+        auto bufferHist  = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY,  256*sizeof(unsigned int), nullptr,  &status);
+        if(status != CL_SUCCESS){ std::cout << "Cannot create output buffer: " << status << "\n"; return -1; }
+
+        auto bufferCDF  = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, 256*sizeof(unsigned int), nullptr, &status);
+        if(status != CL_SUCCESS){ std::cout << "Cannot create CDF buffer: " << status << "\n"; return -1; }
+
+        auto bufferHV = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, 256*sizeof(int), nullptr, &status);
+        if(status != CL_SUCCESS){ std::cout << "Cannot create HV buffer: " << status << "\n"; return -1; }
+
         //filling the buffer with zeros
         cl_int zero = 0;
         status = clEnqueueFillBuffer(queue, bufferPartials, &zero, sizeof(cl_int), 0, nBlocksH*256*sizeof(unsigned int), 0, nullptr, nullptr);
@@ -190,10 +208,7 @@ int main()
         status = clFinish(queue);
         if(status != CL_SUCCESS){ std::cout << "Cannot finish queue: " << status << "\n"; return -1; }
 
-        auto bufferOutput  = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY,  256*sizeof(unsigned int), nullptr,  &status);
-        if(status != CL_SUCCESS){ std::cout << "Cannot create output buffer: " << status << "\n"; return -1; }
-
-        cl_event evt[2];
+        cl_event evt[4];
 
         //NOTE: tehcnically the second kernel is unneeded, but i didn't want to differ from the base, if a problem appears
 
@@ -206,53 +221,91 @@ int main()
             size_t kernel_global_size[2] = {(size_t)block_size, (size_t)nBlocksH*block_size};
             size_t kernel_local_size[2] = {(size_t)block_size, (size_t)block_size};
 	        status = clEnqueueNDRangeKernel(queue, kernel_shared_atomics, 2, nullptr, kernel_global_size, kernel_local_size, 0, nullptr, &evt[0]);
-            if(status != CL_SUCCESS){ std::cout << "Cannot enqueue kernel 3: " << status << "\n"; return -1; }
-            if(status == CL_SUCCESS){std::cout << "Histogramm is done:" << status << std::endl; }
+            if(status != CL_SUCCESS){ std::cout << "Cannot enqueue kernel 1: " << status << "\n"; return -1; }
         }
         
         //THIS IS FOR ACCUMULATING RESULTS FOR EACH HIST -> I DON'T HAVE MANY, JUST ONE HIST
-        //Second kernel: accumulate partial results:
+        //Second kernel: accumulate partial results for hist
         {
             //args for the function
-            status = clSetKernelArg(kernel_accumulate, 0, sizeof(bufferOutput),   &bufferOutput);   if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 2 arg 0: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_accumulate, 0, sizeof(bufferHist),     &bufferHist);   if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 2 arg 0: " << status << "\n"; return -1; }
             status = clSetKernelArg(kernel_accumulate, 1, sizeof(bufferPartials), &bufferPartials); if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 2 arg 1: " << status << "\n"; return -1; }
             status = clSetKernelArg(kernel_accumulate, 2, sizeof(int),            &nBlocksH);       if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 2 arg 2: " << status << "\n"; return -1; }
 
+            //accumulate, due to the blocks -> if one block, there is no need for this.
             size_t kernel_global_size[1] = {(size_t)(256)};
 	        status = clEnqueueNDRangeKernel(queue, kernel_accumulate, 1, nullptr, kernel_global_size, nullptr, 0, nullptr, &evt[1]);
+            if(status != CL_SUCCESS){ std::cout << "Cannot enqueue kernel 2: " << status << "\n"; return -1; }
+        }
+        //copy hit
+        status = clEnqueueReadBuffer(queue, bufferHist, CL_TRUE, 0, 256*sizeof(unsigned int), atomic_histogram.data(), 1, &evt[1], nullptr);
+        if(status != CL_SUCCESS){ std::cout << "Cannot read buffer: " << status << "\n"; return -1; }
+
+        //Third kernel to generate CDF
+        {
+            status = clSetKernelArg(kernel_cdf, 0, sizeof(bufferCDF),    &bufferCDF);   if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 3 arg 0: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_cdf, 1, sizeof(bufferHist),   &bufferHist);  if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 3 arg 1: " << status << "\n"; return -1; }
+        
+            size_t kernel_global_size2[1] = {(size_t)(256)};
+            status = clEnqueueNDRangeKernel(queue, kernel_cdf, 1, nullptr, kernel_global_size2, nullptr, 0, nullptr, &evt[2]);
+            if(status != CL_SUCCESS){ std::cout << "Cannot enqueue kernel 3: " << status << "\n"; return -1; }
+        }
+        status = clEnqueueReadBuffer(queue, bufferCDF, CL_TRUE, 0, 256*sizeof(unsigned int), cdf.data(), 1, &evt[2], nullptr);
+        bool found = true;
+        for(int i=0; found && i!=cdf.size();++i){
+            if(atomic_histogram[i]!=0){
+                V_MIN = cdf[i];
+                found = false;
+            }
+        }
+        std::cout << "V_MIN as " << V_MIN << std::endl; 
+        //Fourth kernel to generate H_V
+        {
+            status = clSetKernelArg(kernel_hv, 0, sizeof(bufferHV),    &bufferHV);    if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 4 arg 0: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_hv, 1, sizeof(bufferCDF),   &bufferCDF);   if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 4 arg 1: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_hv, 2, sizeof(int),         &V_MIN);       if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 4 arg 2: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_hv, 3, sizeof(int),         &size1);       if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 4 arg 3: " << status << "\n"; return -1; }
+            status = clSetKernelArg(kernel_hv, 4, sizeof(int),         &size2);       if(status != CL_SUCCESS){ std::cout << "Cannot set kernel 4 arg 4: " << status << "\n"; return -1; }
+
+            size_t kernel_global_size3[1] = {(size_t)(256)};
+            status = clEnqueueNDRangeKernel(queue, kernel_hv, 1, nullptr, kernel_global_size3, nullptr, 0, nullptr, &evt[3]);
             if(status != CL_SUCCESS){ std::cout << "Cannot enqueue kernel 4: " << status << "\n"; return -1; }
         }
-        
-        std::vector<unsigned int> tmp(256);
-        
-        //reading the buffer!
-        status = clEnqueueReadBuffer(queue, bufferOutput, CL_TRUE, 0, 256*sizeof(unsigned int), tmp.data(), 1, &evt[1], nullptr);
-        if(status != CL_SUCCESS){ std::cout << "Cannot read buffer: " << status << "\n"; return -1; }
+        status = clEnqueueReadBuffer(queue, bufferHV, CL_TRUE, 0, 256*sizeof(int), h_v.data(), 1, &evt[3], nullptr);
 
 
         //time measurement
-        cl_ulong t1_0, t1_1;
+        cl_ulong t1_0, t1_1,t2_1,t2_2;
         status = clGetEventProfilingInfo(evt[0], CL_PROFILING_COMMAND_START, sizeof(t1_0), &t1_0, nullptr);
         status = clGetEventProfilingInfo(evt[1], CL_PROFILING_COMMAND_END,   sizeof(t1_1), &t1_1, nullptr);
+        status = clGetEventProfilingInfo(evt[0], CL_PROFILING_COMMAND_START, sizeof(t2_1), &t2_1, nullptr);
+        status = clGetEventProfilingInfo(evt[3], CL_PROFILING_COMMAND_END,   sizeof(t2_2), &t2_2, nullptr);
         dt2 = (t1_1 - t1_0)*0.001f*0.001f;
-        std::cout << "GPU shared atomics computation took: " << dt2 << " ms\n";
+        dt3 = (t2_2 - t2_1)*0.001f*0.001f;
+        std::cout << "GPU shared atomics computation took: \t" << dt2 << " ms\n";
+        std::cout << "GPU Global CDF computation took: \t" << dt3 << " ms\n";
+
+
+        
+        for(int i=0; i < atomic_histogram.size(); ++i){
+            std::cout<< i << " : " << atomic_histogram[i] << " : " << cdf[i] << " : " << h_v[i] <<std::endl;
+        }
+        
 
         clReleaseEvent(evt[0]);
         clReleaseEvent(evt[1]);
-
-        //copy data to a more visible data object
-        for(int i=0; i < atomic_histogram.size(); ++i){
-            atomic_histogram[i] = tmp[i];
-            std::cout<< i << " : "<<atomic_histogram[i] <<std::endl;
-        }
-        
+        clReleaseEvent(evt[2]);
+        //release stuf from previous kernels
+        clReleaseMemObject(bufferHist);
+        clReleaseMemObject(bufferCDF);
         clReleaseMemObject(bufferInput);
         clReleaseMemObject(bufferPartials);
-        clReleaseMemObject(bufferOutput);
         
     }
     
     clReleaseKernel(kernel_shared_atomics);
+    clReleaseKernel(kernel_accumulate);
+    clReleaseKernel(kernel_cdf);
     clReleaseProgram(program);
     clReleaseCommandQueue(queue);
     clReleaseContext(context);

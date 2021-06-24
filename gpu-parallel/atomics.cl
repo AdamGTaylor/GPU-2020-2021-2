@@ -7,14 +7,14 @@
 //histo: local evaluation -> gets added to global in here
 __kernel void gpu_histo_shared_atomics( __global unsigned int* output, __global int* input, int W )
 {
-    //histograms are in shared memory:
+    // histograms are in shared memory:
     __local unsigned int histo[256];
 
-    //Number of threads in the block:
+    // Number of threads in the block:
     int Nthreads = get_local_size(0) * get_local_size(1);
-    //Linear thread idx:
+    // Linear thread idx:
     int LinID = get_local_id(0) + get_local_id(1) * get_local_size(0);
-    //zero histogram:
+    // Zero histogram:
     for (int i = LinID; i < 256; i += Nthreads){ histo[i] = 0; }
     __syncthreads();
 
@@ -44,10 +44,10 @@ __kernel void gpu_histo_shared_atomics( __global unsigned int* output, __global 
 }
 
 
-//i still need you, as the block are holding my precious data....
+//I still need you, as the blocks are holding my precious data in many histo ( or at least one)
 __kernel void gpu_histo_accumulate(__global unsigned int* out, __global const unsigned int* in, int nBlocks)
 {
-    //each thread sums one shade of the r, g, b histograms
+    //Each thread sums one shade of the r, g, b histograms
     int i = get_global_id(0);
     if(i < 256)
     {
@@ -61,3 +61,34 @@ __kernel void gpu_histo_accumulate(__global unsigned int* out, __global const un
         //printf("%d %u\n", i, out[i]);
     }
 }
+
+//cdf: sum[0,i]; 256 -> 256 (no partial sums -> global)
+__kernel void gpu_global_cdf( __global unsigned int* output, __global const unsigned int* input)
+{
+    //Each thread will sum up till that poin
+    int i = get_global_id(0);
+    if(i < 256){
+        unsigned int sum = 0;
+        for(int j = 0; j <= i; ++j){
+            //i only sum up nonzero elements -> an if here wouldn't be a problem
+            sum += input[j];
+        }
+        output[i] = sum;
+    }
+}
+
+
+//h_v
+__kernel void gpu_global_h_v( __global int* output, __global int* input, int V_MIN , int size1, int size2)
+{
+    //creating h_v
+    int i = get_global_id(0);
+    if(i < 256){
+        double num = 255*(input[i] - V_MIN)/(size1 * size2 - V_MIN);
+        int n = (int)(num < 0 ? (num - 0.5) : (num + 0.5));
+        //no need for atomic add
+        output[i] = n;
+    }
+}
+
+//eq_pic
