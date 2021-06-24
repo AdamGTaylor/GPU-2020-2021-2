@@ -8,17 +8,17 @@
 
 ### Results
     
-    basic(debug)           /w test_pic(30x30) : ~0.7 msec
+    basic(debug)             /w test_pic(30x30 ) : ~0.7 msec
 
-    cpu-multithread(debug) /w test_pic(30x30) : ~1.1 msec
+    cpu-multithread(debug  ) /w test_pic(30x30)  : ~1.1 msec
 
-    gpu-multithread(debug) /w test_pic(30x30) : ~0.021 msec
+    gpu-multithread(debug)   /w test_pic(30x30)  : ~0.021 msec
 
     basic(release)           /w big_pic(445x445) : ~0.9 msec
 
     cpu-multithread(release) /w big_pic(445x445) : ~1.6 msec
 
-    gpu-multithread(release)/w big_pic(445x445) : ~0.064 msec
+    gpu-multithread(release) /w big_pic(445x445) : ~0.064 msec
 
 > As it seems, the test_pic is too small to be used it as a refenerence. A bigger picture would make this multithread process to be more visible.
 
