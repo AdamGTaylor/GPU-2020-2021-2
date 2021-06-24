@@ -12,11 +12,19 @@
 
     cpu-multithread(debug) /w test_pic(30x30) : ~1.1 msec
 
+    gpu-multithread(debug) /w test_pic(30x30) : ~0.021 msec
+
     basic(release) /w big_pic(445x445) : ~0.9 msec
 
     cpu-multithread(release) /w big_pic(445x445) : ~1.6 msec
 
 > As it seems, the test_pic is too small to use it as a refenerence. A bigger picture would make this multithread process to be better.
+
+### TODO:
+
+1. Have to create a bigger picture.
+
+2. h/block_size problem needs a solution. (probably some divisible thing which returns something and makes it search for a better blocksize between [1,32])
 
 ## Roadmap.
 
@@ -66,6 +74,12 @@
 ### 2021/06/22: h/blocksize division problem
 
 > Earlier I could easily make bins for each thread to make them go through their assigned interval and with this, the bins contained different amounts of values. With OpenCL I have to tell the blocksize for this. But if the blocksize is not divisible amount of data, to get the blocks number, there are mismatches. Any upward rounding gives a wrong result at 0.
+
+### 2021/06/23: gpu-parallel finished
+
+> I was able to finish the code that uses a GPU for repetative calculations (with Opencl). It does the same: equalizes the histogramm of the pictures.
+
+### More polishing later!
 
 ## The test_pic.txt
 

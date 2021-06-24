@@ -314,6 +314,7 @@ int main()
         dt4 = (t4_1 - t4_0)*0.001f*0.001f;
         dt5 = (t5_1 - t5_0)*0.001f*0.001f;
         std::cout << "GPU Histogramm Equalization computation took: \t" << dt1 << " + " << dt2 << " + " << dt3 << " + " << dt4 << " + " << dt5 << " ms\n";
+        std::cout << "\t\t\t\t\tSum\t" << dt1+dt2+dt3+dt4+dt5 << " ms\n";
 
 
 
