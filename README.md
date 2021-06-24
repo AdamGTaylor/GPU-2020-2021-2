@@ -18,7 +18,7 @@
 
     cpu-multithread(release) /w big_pic(445x445) : ~1.6 msec
 
-> As it seems, the test_pic is too small to use it as a refenerence. A bigger picture would make this multithread process to be better.
+> As it seems, the test_pic is too small to be used it as a refenerence. A bigger picture would make this multithread process to be more visible.
 
 ### TODO:
 
@@ -75,7 +75,7 @@
 
 > Earlier I could easily make bins for each thread to make them go through their assigned interval and with this, the bins contained different amounts of values. With OpenCL I have to tell the blocksize for this. But if the blocksize is not divisible amount of data, to get the blocks number, there are mismatches. Any upward rounding gives a wrong result at 0.
 
-### 2021/06/23: gpu-parallel finished
+### 2021/06/24: gpu-parallel finished
 
 > I was able to finish the code that uses a GPU for repetative calculations (with Opencl). It does the same: equalizes the histogramm of the pictures.
 
