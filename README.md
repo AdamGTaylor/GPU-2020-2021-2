@@ -28,6 +28,8 @@
 
 2. h/block_size problem needs a solution. (probably some divisible thing which returns something and makes it search for a better blocksize between [1,32])
 
+3. Comparison between different techniques (basic and gpu multithread).
+
 ## Roadmap.
 
     1/First i will do  basic, draftlike program, that has zero parallelization. The point is to get the correct approach
