@@ -25,11 +25,10 @@ __kernel void gpu_histo_shared_atomics( __global unsigned int* output, __global 
     // process pixel blocks horizontally
     // updates the partial histogram in shared memory
     int y = get_group_id(1) * get_local_size(1) + get_local_id(1);
-    //printf("%d : %d | %d : %d | W: %d\n", get_global_id(0), get_global_id(1),get_group_id(0),get_group_id(1), y * W + get_local_id(0));
     for (int x = get_local_id(0); x < W; x += get_local_size(0))
     {
         if(y < W){
-            //printf("| %d | %d | %d |\n",y,y * W , y * W + x);
+
             int pixel = input[y * W + x];
             atomic_add(&histo[pixel], 1);
         }
