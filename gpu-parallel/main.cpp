@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <random>
 #include <cmath>
+#include <numeric>
 
 #include <chrono>
 
@@ -28,7 +29,21 @@ int V_min = 0;                      //the amount of minimum value pixels
 
 static const int low = 0;           //min for bins
 static const int high = 255;        //max for bins
-static const int bins = 256;
+static const int histo_size = 256;
+
+int V_MIN = 0;
+
+template <typename T>
+struct atomic_wrapper
+{
+  std::atomic<T> data;
+
+  atomic_wrapper():data(){}
+  atomic_wrapper(std::atomic<T> const& a   ):data(a.load()){}
+  atomic_wrapper(atomic_wrapper const& copy):data(copy.data.load()){}
+  atomic_wrapper& operator=(atomic_wrapper const& copy){ data.store(copy.data.load()); return *this; }
+};
+
 
 static const std::string InputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/pics/big_pic.txt");
 static const std::string OutputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/output/big_pic.txt");
@@ -39,6 +54,14 @@ void save_pic(const std::vector<T> & veced_pic);
 
 template<typename T>
 T summer(const std::vector<T> & veced_data,int i1,int i2);
+
+template<typename T>
+T summer(const std::vector<atomic_wrapper<T>> & veced_data,int i1,int i2);
+
+template<typename T>
+void save_pic(const std::vector<T> & veced_pic);
+
+void misMatch(std::vector<int> & cpu_pic, std::vector<cl_int> & gpu_pic);
 
 //error check
 void checkErr(cl_int err, const char * name)
@@ -54,26 +77,86 @@ int main()
 {      
     //creating objects from pics
     std::vector<cl_int> pic;               //input pic
-    std::vector<cl_int> eq_pic;            //output pic
+    std::vector<cl_int> gpu_pic;           //gpu: output pic
+    std::vector<int>    cpu_pic;           //cpu: output pic
+
 
     std::vector<unsigned int> atomic_histogram(256,0);
     std::vector<cl_int> cdf(256,0);        //point mass function of pic
     std::vector<cl_int> h_v(256,0);        //new values for eq_pic created from eq
-
-    int V_MIN = 0;
-    //loading in texted picture
+    //LOADING
     std::ifstream myfile(InputFileName);
     if ( myfile.is_open() ){
         myfile >> size1;
         myfile >> size2;
         pic.resize(size1*size2);
-        eq_pic.resize(size1*size2);
+        cpu_pic.resize(size1*size2);
+        gpu_pic.resize(size1*size2);
         for(int i=0; i < size1 * size2; ++i){
             myfile >> pic[i];
         }
         std::cout << "Succesful loading:" << size1 << "x" << size2 << std::endl;
     }
+    
+    //###################################################################################
+    //                                  CPU CODE
+    //###################################################################################
 
+    std::vector<int> c_histogram(256,0);  //his of pic
+    std::vector<int> c_cdf(256,0);        //point mass function of pic
+    std::vector<int> c_h_v(256,0);        //new values for eq_pic created from eq
+
+
+    auto time0 = std::chrono::high_resolution_clock::now();
+    //pmf
+    int count = 0;
+    for(int i=0; i < pic.size();++i){
+        c_histogram[pic[i]] += 1;
+        count += 1;
+    }
+    std::cout << "Amount: " << count << std::endl;
+
+    //cdf
+    cdf[0] = c_histogram[0];
+    for(int i=1; i < c_cdf.size();++i){
+        c_cdf[i] = c_cdf[i-1] + c_histogram[i];
+    }
+    //got cdf -> search for minimum -> h(v)
+    
+    bool found = true;
+    for(int i=0; found && i!=c_cdf.size();++i){
+        if(c_histogram[i]!=0){
+            V_MIN = c_cdf[i];
+            found = false;
+        }
+    }
+    //h_b here
+    auto h_v_maker = [&](std::vector<int> cdf0, int index){
+        int nominator = cdf0[index] - V_MIN;
+        int denominator = (size1 * size2 - V_MIN);
+        int val = (int)round(255*nominator/denominator);
+        //std::cout << cdf0[index] << " | " << val <<  std::endl; 
+        return val;
+    };
+    for(int i=0; i!=c_cdf.size(); ++i){
+        c_h_v[i] = h_v_maker(c_cdf,i);
+    }
+
+    std::cout << "H(v) created" << std::endl; 
+    for(int i=0; i!=pic.size();++i){
+        cpu_pic[i] = c_h_v[pic[i]];
+    }
+    auto time1 = std::chrono::high_resolution_clock::now();
+    std::cout << "CPU Equalized under " << std::chrono::duration_cast<std::chrono::nanoseconds>(time1-time0).count()/pow(10,6) << " msec!"  << std::endl;
+
+
+    //###################################################################################
+    //                                  GPU CODE
+    //###################################################################################
+    
+    //loading in texted picture
+
+    V_MIN = 0;
     //OpenCL stuff
     // queue -> device -> platform -> context -> kernel
     cl_int status = CL_SUCCESS;
@@ -81,10 +164,8 @@ int main()
     std::vector<cl_platform_id> platforms;
     std::vector<std::vector<cl_device_id>> devices;
     //block num
-    static const int block_size = 6;    //blocksize    
+    static const int block_size = 5;    //blocksize    
     //YE DIVISION WITH 4 IS NOT LIKED
-    double ejnye = (size2 / block_size);
-    std::cout << ejnye << std::endl; 
     int nBlocksH = size2 / block_size;  //number if block vertically
     
     status = clGetPlatformIDs(0, nullptr, &numPlatforms);
@@ -292,7 +373,7 @@ int main()
             if(status != CL_SUCCESS){ std::cout << "Cannot enqueue kernel 5: " << status << "\n"; return -1; }
         }
 
-        status = clEnqueueReadBuffer(queue, bufferOutput, CL_TRUE, 0, size1*size2*sizeof(unsigned int), eq_pic.data(), 1, &evt[4], nullptr);
+        status = clEnqueueReadBuffer(queue, bufferOutput, CL_TRUE, 0, size1*size2*sizeof(unsigned int), gpu_pic.data(), 1, &evt[4], nullptr);
 
 
 
@@ -317,13 +398,7 @@ int main()
         std::cout << "\t\t\t\t\tSum\t" << dt1+dt2+dt3+dt4+dt5 << " ms\n";
 
 
-
-        /*
-        for(int i=0; i < atomic_histogram.size(); ++i){
-            std::cout<< i << " : " << atomic_histogram[i] << " : " << cdf[i] << " : " << h_v[i] <<std::endl;
-        }
-        */
-        //there has to be a mor elegant way to do this...
+        //there has to be a more elegant way to do this...
         clReleaseEvent(evt[0]);
         clReleaseEvent(evt[1]);
         clReleaseEvent(evt[2]);
@@ -347,7 +422,16 @@ int main()
     clReleaseContext(context);
     clReleaseDevice(device);
 
-    save_pic(eq_pic);
+    int sum1 = 0; int sum2 = 0;
+    for(int i = 0; i < 256; ++i){
+        sum1 += c_histogram[i];
+        sum2 += atomic_histogram[i];
+    }
+    std::cout << "Size: " << size1*size2 << "\nCPU: " << sum1 << "\nGPU: " << sum2 << std::endl;
+
+    misMatch(cpu_pic,gpu_pic);
+
+    save_pic(gpu_pic);
     
     return 0;
 }
@@ -374,8 +458,29 @@ T summer(const std::vector<T> & veced_data,int i1,int i2){
     return sum;
 }
 
+template<typename T>
+T summer(const std::vector<atomic_wrapper<T>> & veced_data,int i1,int i2){
+    int sum = 0;
+    for(int i=i1; i<=i2; ++i) sum+=veced_data[i].data.load();
+    return sum;
+}
+
 void fromLinearMemory( std::vector<unsigned int> & input, std::vector<unsigned int> veced){
     for(int i=0; i<256; ++i){
         veced[i] = input[0*256+i];
     }
+}
+
+void misMatch(std::vector<int> & cpu_pic, std::vector<cl_int> & gpu_pic){
+    //CHECKING FOR MISMATCHES
+    int count = 0;
+    for(int i=0; i != size1;++i){
+        for(int j=0; j != size2;++j){
+            if(cpu_pic[j+ i*size2] != gpu_pic[j + i * size2]){
+                std::cout << "Mismatch at (" << j+size2*i << "):" << cpu_pic[j+ i*size2] << " != " << gpu_pic[j + i * size2] << std::endl;
+                count++;
+            }
+        }
+    }
+    std::cout<< count << " mismatches found!" << std::endl;
 }
