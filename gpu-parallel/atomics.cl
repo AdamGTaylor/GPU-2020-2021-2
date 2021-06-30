@@ -14,6 +14,7 @@ __kernel void gpu_histo_shared_atomics( __global unsigned int* output, __global 
     int Nthreads = get_local_size(0) * get_local_size(1);
     // Linear thread idx:
     int LinID = get_local_id(0) + get_local_id(1) * get_local_size(0);
+
     // Zero histogram:
     for (int i = LinID; i < 256; i += Nthreads){ histo[i] = 0; }
     __syncthreads();
@@ -24,10 +25,14 @@ __kernel void gpu_histo_shared_atomics( __global unsigned int* output, __global 
     // process pixel blocks horizontally
     // updates the partial histogram in shared memory
     int y = get_group_id(1) * get_local_size(1) + get_local_id(1);
+    //printf("%d : %d | %d : %d | W: %d\n", get_global_id(0), get_global_id(1),get_group_id(0),get_group_id(1), y * W + get_local_id(0));
     for (int x = get_local_id(0); x < W; x += get_local_size(0))
     {
-        int pixel = input[y * W + x];
-        atomic_add(&histo[pixel], 1);
+        if(y < W){
+            //printf("| %d | %d | %d |\n",y,y * W , y * W + x);
+            int pixel = input[y * W + x];
+            atomic_add(&histo[pixel], 1);
+        }
     }
 
     barrier(CLK_LOCAL_MEM_FENCE);

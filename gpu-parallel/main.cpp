@@ -45,8 +45,8 @@ struct atomic_wrapper
 };
 
 
-static const std::string InputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/pics/big_pic.txt");
-static const std::string OutputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/output/big_pic.txt");
+static const std::string InputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/pics/test_pic.txt");
+static const std::string OutputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/output/test_pic.txt");
 void fromLinearMemory( std::vector<unsigned int> & input, std::vector<unsigned int>& veced);
 
 template<typename T>
@@ -164,9 +164,10 @@ int main()
     std::vector<cl_platform_id> platforms;
     std::vector<std::vector<cl_device_id>> devices;
     //block num
-    static const int block_size = 5;    //blocksize    
+    static const int block_size = 32;    //blocksize    
     //YE DIVISION WITH 4 IS NOT LIKED
-    int nBlocksH = size2 / block_size;  //number if block vertically
+    int nBlocksH = size2 / block_size + 1;  //number if block vertically
+    std::cout << "Number of Blocks:" << nBlocksH << std::endl;
     
     status = clGetPlatformIDs(0, nullptr, &numPlatforms);
     if(status != CL_SUCCESS){ std::cout << "Cannot get number of platforms: " << status << "\n"; return -1; }
