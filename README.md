@@ -83,6 +83,10 @@
 
 > I was able to finish the code that uses a GPU for repetative calculations (with Opencl). It does the same: equalizes the histogramm of the pictures.
 
+### 2021/06/30: gpu code extension
+
+> It was requested that the gpu code should be extended to check if the results align with the cpu output. (misMatch) Later on, I will extended this code to make a bigger compuation grid than it is required and sort with an if statement to make the extra threads idle.
+
 ### More polishing later!
 
 ## The test_pic.txt
