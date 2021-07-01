@@ -8,27 +8,31 @@
 
 ### Results
     
-    basic(debug)             /w test_pic(30x30 ) : ~0.7 msec
+    basic(debug)             /w test_pic(30x30 ) :    ~0.7 msec
+ 
+    cpu-multithread(debug)   /w test_pic(30x30)  :    ~1.1 msec
 
-    cpu-multithread(debug  ) /w test_pic(30x30)  : ~1.1 msec
+    gpu-multithread(debug)   /w test_pic(30x30)  :    ~0.021 msec
 
-    gpu-multithread(debug)   /w test_pic(30x30)  : ~0.021 msec
+    basic(release)           /w big_pic(445x445) :    ~0.9 msec
 
-    basic(release)           /w big_pic(445x445) : ~0.9 msec
+    cpu-multithread(release) /w big_pic(445x445) :    ~1.6 msec
 
-    cpu-multithread(release) /w big_pic(445x445) : ~1.6 msec
+    gpu-multithread(release) /w big_pic(445x445) :    ~0.064 msec
 
-    gpu-multithread(release) /w big_pic(445x445) : ~0.064 msec
+    basic(release)           /w large_pic(4000x4000)  ~35 msec
+
+    gpu-multithread(release) /w large_pic(4000x4000)  ~1.3 msec
 
 > As it seems, the test_pic is too small to be used it as a refenerence. A bigger picture would make this multithread process to be more visible.
 
 ### TODO:
 
-1. Have to create a bigger picture.
+1. Have to create a bigger picture. (DONE)
 
-2. h/block_size problem needs a solution. (probably some divisible thing which returns something and makes it search for a better blocksize between [1,32])
+2. h/block_size problem needs a solution. (probably some divisible thing which returns something and makes it search for a better blocksize between [1,32]) (DONE)
 
-3. Comparison between different techniques (basic and gpu multithread).
+3. Comparison between different techniques (basic and gpu multithread). (DONE)
 
 ## Roadmap.
 
