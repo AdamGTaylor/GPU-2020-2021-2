@@ -91,6 +91,10 @@
 
 > I was able to pinpoint the variables needed for this simple if statement that makes the extra threads idle.
 
+### 2021/07/01: large pic fix
+
+> As larger numbers emerge, integer cannot handle it as we shoto out of its scope. More dlouble variables got implement and multiple variables to avoid wrong h_v generations.
+
 ### More polishing later!
 
 ## The test_pic.txt

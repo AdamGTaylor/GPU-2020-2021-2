@@ -88,8 +88,14 @@ __kernel void gpu_global_h_v( __global int* output, __global int* input, int V_M
     //creating h_v
     int i = get_global_id(0);
     if(i < 256){
+        //THANK YOU MF: CAN'T DO COMPLEX STUFF YES
         double num = 255*(input[i] - V_MIN)/(size1 * size2 - V_MIN);
-        int n = (int)(num < 0 ? (num - 0.5) : (num + 0.5));
+        double nomi = (input[i] - V_MIN);
+        double denomi = (size1 * size2 - V_MIN);
+        double numi = nomi / denomi;
+        double numi2 = 255*numi;
+        //int n = round(num);
+        int n = (int)(numi2 < 0 ? (numi2 - 0.5) : (numi2 + 0.5));        
         //no need for atomic add
         output[i] = n;
     }

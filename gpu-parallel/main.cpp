@@ -45,8 +45,8 @@ struct atomic_wrapper
 };
 
 
-static const std::string InputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/pics/test_pic.txt");
-static const std::string OutputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/output/test_pic.txt");
+static const std::string InputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/pics/large_pic.txt");
+static const std::string OutputFileName("E:/_ELTE_PHYS_MSC/2_second_semester/gpu/project/gpu-parallel/output/large_pic.txt");
 void fromLinearMemory( std::vector<unsigned int> & input, std::vector<unsigned int>& veced);
 
 template<typename T>
@@ -82,8 +82,8 @@ int main()
 
 
     std::vector<unsigned int> atomic_histogram(256,0);
-    std::vector<cl_int> cdf(256,0);        //point mass function of pic
-    std::vector<cl_int> h_v(256,0);        //new values for eq_pic created from eq
+    std::vector<unsigned int> cdf(256,0);        //point mass function of pic
+    std::vector<unsigned int> h_v(256,0);  //new values for eq_pic created from eq
     //LOADING
     std::ifstream myfile(InputFileName);
     if ( myfile.is_open() ){
@@ -117,7 +117,7 @@ int main()
     std::cout << "Amount: " << count << std::endl;
 
     //cdf
-    cdf[0] = c_histogram[0];
+    c_cdf[0] = c_histogram[0];
     for(int i=1; i < c_cdf.size();++i){
         c_cdf[i] = c_cdf[i-1] + c_histogram[i];
     }
@@ -132,9 +132,11 @@ int main()
     }
     //h_b here
     auto h_v_maker = [&](std::vector<int> cdf0, int index){
-        int nominator = cdf0[index] - V_MIN;
-        int denominator = (size1 * size2 - V_MIN);
-        int val = (int)round(255*nominator/denominator);
+        double nominator = cdf0[index] - V_MIN;
+        double denominator = (size1 * size2 - V_MIN);
+        double mul = nominator / denominator;
+        double num1 = 255*mul;
+        int val = (int)(num1 < 0 ? (num1 - 0.5) : (num1 + 0.5));
         //std::cout << cdf0[index] << " | " << val <<  std::endl; 
         return val;
     };
@@ -328,7 +330,7 @@ int main()
         }
         //copy hit
         status = clEnqueueReadBuffer(queue, bufferHist, CL_TRUE, 0, 256*sizeof(unsigned int), atomic_histogram.data(), 1, &evt[1], nullptr);
-        if(status != CL_SUCCESS){ std::cout << "Cannot read buffer: " << status << "\n"; return -1; }
+        if(status != CL_SUCCESS){ std::cout << "Cannot read Hist Buffer: " << status << "\n"; return -1; }
 
         //Third kernel to generate CDF
         {
@@ -360,7 +362,7 @@ int main()
             status = clEnqueueNDRangeKernel(queue, kernel_hv, 1, nullptr, kernel_global_size3, nullptr, 0, nullptr, &evt[3]);
             if(status != CL_SUCCESS){ std::cout << "Cannot enqueue kernel 4: " << status << "\n"; return -1; }
         }
-        status = clEnqueueReadBuffer(queue, bufferHV, CL_TRUE, 0, 256*sizeof(int), h_v.data(), 1, &evt[3], nullptr);
+        status = clEnqueueReadBuffer(queue, bufferHV, CL_TRUE, 0, 256*sizeof(unsigned int), h_v.data(), 1, &evt[3], nullptr);
 
         //Fifth kernel to generate eq_pic
         {
@@ -431,7 +433,11 @@ int main()
     std::cout << "Size: " << size1*size2 << "\nCPU: " << sum1 << "\nGPU: " << sum2 << std::endl;
 
     misMatch(cpu_pic,gpu_pic);
-
+    /*
+    for(int i = 0; i!=256; ++i){
+        std::cout << i << " : " << atomic_histogram[i] << " | " << cdf[i] << " -> " << h_v[i] << std::endl;
+    }
+    */
     save_pic(gpu_pic);
     
     return 0;
